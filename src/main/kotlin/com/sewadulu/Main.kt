@@ -1,19 +1,20 @@
 package com.sewadulu
 
-import com.sewadulu.controller.SewaController
-import com.sewadulu.service.SewaService
+import com.sewadulu.endpoint.endpointdb
 import io.javalin.Javalin
+import io.javalin.http.staticfiles.Location
 
 fun main() {
-    // 1. Jalankan server Javalin (Koneksi MongoDB akan otomatis aktif saat Service dipanggil)
+    DatabaseService.init()
+
     val app = Javalin.create { config ->
-        config.staticFiles.add("/public")
-    }.start(7070)
+        config.staticFiles.add("/public", Location.CLASSPATH)   // melayani index.html
+    }
 
-    // 2. Inisialisasi Service & Controller
-    val sewaService = SewaService()
-    val sewaController = SewaController(sewaService)
+    // Semua route (items, pelanggan, sewa, kembali, transaksi) membaca/menulis ke SQLite.
+    // Harus didaftarkan SEBELUM app.start().
+    endpointdb(app)
 
-    // 3. Daftarkan routes
-    sewaController.registerRoutes(app)
+    app.start(7070)
+    println("SewaDulu berjalan di http://localhost:7070")
 }
