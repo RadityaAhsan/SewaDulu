@@ -10,8 +10,8 @@ function tampilPesan(teks, error = false) {
     const el = $('pesan');
     if (!el) return;
 
-    el.textContent = (error ? '❌ ' : '✅ ') + teks;
-    el.className = error ? 'error' : 'sukses';
+    el.innerHTML = `<i class="fa-solid ${error ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${teks}</span>`;
+    el.className = 'toast ' + (error ? 'error' : 'sukses');
     el.style.display = 'flex';
 
     clearTimeout(window._timer);
@@ -62,7 +62,7 @@ function tambahItem() {
             jenisGigi: $('jenisGigi').value
         });
         tampilPesan(`Item "${item.nama}" berhasil ditambahkan (${item.id}).`);
-        ['namaItem', 'hargaSewa', 'kapasitas', 'resolusi', 'jenisGigi'].forEach(i => { if ($(i)) $(i).value = ''; });
+        ['namaItem', 'hargaSewa', 'kapasitas', 'resolusi', 'jenisGigi'].forEach(i => { if ($(i))$(i).value = ''; });
         await refreshSemua();
     });
 }
@@ -70,10 +70,10 @@ function tambahItem() {
 function tambahPelanggan() {
     jalankan(async () => {
         const p = await api('/api/pelanggan', 'POST', {
-            nama: $('namaPlg').value, email: $('emailPlg').value, noHp: $('hpPlg').value
+            nama: $('namaPlg').value, email: $('emailPlg').value, noHp:$('hpPlg').value
         });
         tampilPesan(`Pelanggan "${p.nama}" berhasil ditambahkan (${p.id}).`);
-        ['namaPlg', 'emailPlg', 'hpPlg'].forEach(i => { if ($(i)) $(i).value = ''; });
+        ['namaPlg', 'emailPlg', 'hpPlg'].forEach(i => { if ($(i))$(i).value = ''; });
         await refreshSemua();
     });
 }
@@ -99,7 +99,7 @@ function kembalikan() {
 }
 
 // ==========================================
-// RENDER (semua dari data database)
+// RENDER
 // ==========================================
 function renderStats() {
     const { items, trx, pelanggan } = state;
@@ -109,7 +109,6 @@ function renderStats() {
     $('statPelanggan').innerText = pelanggan.length;
 }
 
-// Dipanggil juga oleh dropdown filter di index.html
 function muatItem() {
     const f = $('filter').value;
     let items = state.items;
@@ -118,16 +117,22 @@ function muatItem() {
 
     $('tabelItem').innerHTML = items.length ? items.map(i => `
     <tr>
-      <td>${esc(i.id)}</td><td>${esc(i.kategori)}</td><td>${esc(i.nama)}</td>
+      <td><code>${esc(i.id)}</code></td>
+      <td>${esc(i.kategori)}</td>
+      <td><strong>${esc(i.nama)}</strong></td>
       <td>${rupiah(i.hargaSewa)}</td>
       <td>${Object.entries(i.detail || {}).map(([k, v]) => esc(k) + ': ' + esc(v)).join(', ')}</td>
-      <td class="${i.statusTersedia ? 'tersedia' : 'disewa'}">${i.statusTersedia ? 'Tersedia' : 'Disewa'}</td>
-    </tr>`).join('') : '<tr><td colspan="6">Belum ada data.</td></tr>';
+      <td>
+        <span class="badge ${i.statusTersedia ? 'badge-success' : 'badge-danger'}">
+          ${i.statusTersedia ? 'Tersedia' : 'Disewa'}
+        </span>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center; color:#64748b;">Belum ada data.</td></tr>';
 }
 
-// Isi <select> tanpa menghilangkan pilihan user saat auto-refresh
 function isiSelect(id, html) {
     const el = $(id);
+    if (!el) return;
     const lama = el.value;
     el.innerHTML = html;
     if (lama && [...el.options].some(o => o.value === lama)) el.value = lama;
@@ -136,31 +141,34 @@ function isiSelect(id, html) {
 function renderDropdown() {
     const tersedia = state.items.filter(i => i.statusTersedia);
     isiSelect('sewaItem', tersedia.length
-        ? tersedia.map(i => `<option value="${esc(i.id)}">${esc(i.id)} ${esc(i.nama)} (${rupiah(i.hargaSewa)}/hari)</option>`).join('')
+        ? tersedia.map(i => `<option value="${esc(i.id)}">${esc(i.id)} - ${esc(i.nama)} (${rupiah(i.hargaSewa)}/hari)</option>`).join('')
         : '<option value="">(tidak ada item tersedia)</option>');
 
     isiSelect('sewaPelanggan', state.pelanggan.length
-        ? state.pelanggan.map(p => `<option value="${esc(p.id)}">${esc(p.id)} ${esc(p.nama)}</option>`).join('')
+        ? state.pelanggan.map(p => `<option value="${esc(p.id)}">${esc(p.id)} - ${esc(p.nama)}</option>`).join('')
         : '<option value="">(belum ada pelanggan)</option>');
 
     const aktif = state.trx.filter(t => !t.selesai);
     isiSelect('kembaliTrx', aktif.length
-        ? aktif.map(t => `<option value="${esc(t.id)}">${esc(t.id)} ${esc(t.itemNama)} oleh ${esc(t.pelangganNama)}</option>`).join('')
+        ? aktif.map(t => `<option value="${esc(t.id)}">${esc(t.id)} - ${esc(t.itemNama)} oleh ${esc(t.pelangganNama)}</option>`).join('')
         : '<option value="">(tidak ada sewa berjalan)</option>');
 }
 
 function renderTabelTrx() {
     $('tabelTrx').innerHTML = state.trx.length ? state.trx.map(t => `
     <tr>
-      <td>${esc(t.id)}</td><td>${esc(t.itemNama)}</td><td>${esc(t.pelangganNama)}</td>
-      <td>${esc(t.tanggalSewa)}</td><td>${esc(t.durasiRencana)} hari</td>
-      <td>${t.selesai && t.tanggalKembali ? esc(t.tanggalKembali) : '<i>belum</i>'}</td>
-      <td>${t.selesai ? rupiah(t.totalBiaya) : '-'}</td>
-    </tr>`).join('') : '<tr><td colspan="7">Belum ada transaksi.</td></tr>';
+      <td><code>${esc(t.id)}</code></td>
+      <td><strong>${esc(t.itemNama)}</strong></td>
+      <td>${esc(t.pelangganNama)}</td>
+      <td>${esc(t.tanggalSewa)}</td>
+      <td>${esc(t.durasiRencana)} hari</td>
+      <td>${t.selesai && t.tanggalKembali ? esc(t.tanggalKembali) : '<i style="color:#94a3b8">belum</i>'}</td>
+      <td><strong>${t.selesai ? rupiah(t.totalBiaya) : '-'}</strong></td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center; color:#64748b;">Belum ada transaksi.</td></tr>';
 }
 
 // ==========================================
-// SINKRONISASI DENGAN DATABASE
+// SINKRONISASI
 // ==========================================
 async function refreshSemua() {
     const [items, pelanggan, trx] = await Promise.all([
@@ -180,8 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ubahKategori();
     jalankan(refreshSemua);
 
-    // Auto-refresh tiap 5 detik supaya selalu sinkron dengan isi sewadulu.db
-    // (dilewati saat tab tidak aktif atau saat user sedang membuka dropdown)
     setInterval(() => {
         if (document.hidden) return;
         const aktif = document.activeElement;
