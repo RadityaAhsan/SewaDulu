@@ -1,105 +1,287 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SewaDulu</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 12px; background: #f5f6fa; color: #222; }
-  h1 { margin-bottom: 4px; }
-  section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
-  h2 { margin-top: 0; font-size: 18px; }
-  label { display: block; margin: 8px 0 2px; font-size: 14px; }
-  input, select, button { padding: 7px; font-size: 14px; width: 100%; box-sizing: border-box; }
-  button { width: auto; margin-top: 10px; cursor: pointer; background: #2d6cdf; color: #fff; border: 0; border-radius: 4px; padding: 8px 16px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
-  th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-  th { background: #eef1f8; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  #pesan { display: none; position: fixed; top: 12px; right: 12px; max-width: 340px; padding: 12px 16px; border-radius: 6px; color: #fff; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-  #pesan.sukses { background: #2e9e5b; }
-  #pesan.error { background: #d64545; }
-  .tersedia { color: #2e9e5b; font-weight: bold; }
-  .disewa { color: #d64545; font-weight: bold; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SewaDulu</title>
+  <style>
+    /* Tema Gelap Futuristik ala Neon/Glassmorphism */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 20px;
+      background: linear-gradient(135deg, #0f111a 0%, #1a1025 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* Kotak Header (Judul Utama) */
+    .header-box {
+      background: linear-gradient(135deg, rgba(45, 35, 75, 0.7), rgba(25, 35, 65, 0.7));
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 16px;
+      padding: 30px 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(139, 92, 246, 0.15);
+      backdrop-filter: blur(10px);
+      text-align: center;
+    }
+
+    .header-box h1 {
+      color: #ffffff;
+      margin-top: 0;
+      margin-bottom: 8px;
+      text-shadow: 0 0 15px rgba(255,255,255,0.4);
+      font-size: 2.2em;
+    }
+
+    .header-box p { color: #a0aec0; margin: 0; font-size: 1.1em; }
+
+    /* Desain Kotak Fitur yang Bisa Diklik */
+    section {
+      background: rgba(25, 30, 45, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(100, 150, 255, 0.15);
+      border-radius: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    section:hover {
+      border-color: rgba(0, 255, 255, 0.4);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 200, 255, 0.15);
+    }
+
+    /* BAGIAN ACCORDION (MENU LIPAT) */
+    .section-header {
+      padding: 20px 25px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255, 0.02);
+      transition: background 0.3s;
+    }
+
+    .section-header:hover { background: rgba(255,255,255, 0.06); }
+
+    .section-header h2 { margin: 0; font-size: 18px; color: #ffffff; }
+
+    .arrow {
+      font-size: 14px;
+      transition: transform 0.3s;
+      color: #00e5ff;
+    }
+
+    .section-header.active .arrow { transform: rotate(180deg); }
+
+    /* Menyembunyikan form di awal */
+    .form-content {
+      padding: 0 25px 25px 25px;
+      display: none;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      margin-top: 5px;
+      padding-top: 20px;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* STYLING INPUT & LAINNYA */
+    label { display: block; margin: 12px 0 6px; font-size: 14px; font-weight: 600; color: #cbd5e1; }
+
+    input, select {
+      padding: 10px 12px; font-size: 14px; width: 100%; box-sizing: border-box;
+      border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background-color: rgba(10, 15, 30, 0.7); color: #ffffff;
+      font-family: inherit; transition: 0.3s;
+    }
+    input:focus, select:focus {
+      border-color: #00e5ff; outline: none;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+      background-color: rgba(20, 25, 40, 0.9);
+    }
+
+    button {
+      width: auto; margin-top: 15px; cursor: pointer;
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      color: #fff; border: none; border-radius: 8px;
+      padding: 10px 24px; font-weight: bold; transition: all 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #2563eb, #7c3aed);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+      transform: translateY(-2px);
+    }
+
+    table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: 14px; margin-top: 15px; border-radius: 12px;
+      overflow: hidden; background: rgba(15, 20, 35, 0.8);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    th, td { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 14px; text-align: left; }
+    th { background: rgba(30, 35, 55, 0.9); font-weight: 600; color: #ffffff; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    /* Grid Layout (Dikunci 2 kolom secara sejajar) */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* Responsif: otomatis jadi 1 baris ke bawah jika layar sempit (seperti di HP) */
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #pesan {
+      display: none; position: fixed; top: 20px; right: 20px; max-width: 340px;
+      padding: 16px 20px; border-radius: 8px; color: #fff; z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4); font-weight: 500;
+    }
+    #pesan.sukses { background: linear-gradient(45deg, #10b981, #059669); }
+    #pesan.error { background: linear-gradient(45deg, #ef4444, #dc2626); }
+
+    .tersedia { color: #34d399; font-weight: bold; text-shadow: 0 0 5px rgba(52, 211, 153, 0.3); }
+    .disewa { color: #f87171; font-weight: bold; text-shadow: 0 0 5px rgba(248, 113, 113, 0.3); }
+  </style>
 </head>
 <body>
-<h1>SewaDulu</h1>
-<p>Sistem penyewaan tenda, kamera, dan sepeda.</p>
+
+<div class="header-box">
+  <h1>SewaDulu</h1>
+  <p>Sistem penyewaan tenda, kamera, dan sepeda.</p>
+</div>
+
 <div id="pesan"></div>
 
 <div class="grid">
   <!-- FITUR 1 -->
   <section>
-    <h2>1. Tambah Item</h2>
-    <label>Kategori</label>
-    <select id="kategori" onchange="ubahKategori()">
-      <option value="tenda">Tenda</option>
-      <option value="kamera">Kamera</option>
-      <option value="sepeda">Sepeda</option>
-    </select>
-    <label>Nama Item</label><input id="namaItem" type="text">
-    <label>Harga Sewa per Hari (Rp)</label><input id="hargaSewa" type="number" min="0">
-    <div id="f-tenda"><label>Kapasitas (orang)</label><input id="kapasitas" type="number" min="0"></div>
-    <div id="f-kamera" style="display:none"><label>Resolusi (contoh: 24 MP)</label><input id="resolusi" type="text"></div>
-    <div id="f-sepeda" style="display:none"><label>Jenis Gigi (contoh: 21 speed)</label><input id="jenisGigi" type="text"></div>
-    <button onclick="tambahItem()">Tambah Item</button>
+    <div class="section-header" onclick="toggleTampil('form-item', this)">
+      <h2>1. Tambah Item</h2>
+      <span class="arrow">▼</span>
+    </div>
+    <div id="form-item" class="form-content">
+      <label>Kategori</label>
+      <select id="kategori" onchange="ubahKategori()">
+        <option value="tenda">Tenda</option>
+        <option value="kamera">Kamera</option>
+        <option value="sepeda">Sepeda</option>
+      </select>
+      <label>Nama Item</label><input id="namaItem" type="text">
+      <label>Harga Sewa per Hari (Rp)</label><input id="hargaSewa" type="number" min="0">
+      <div id="f-tenda"><label>Kapasitas (orang)</label><input id="kapasitas" type="number" min="0"></div>
+      <div id="f-kamera" style="display:none"><label>Resolusi (contoh: 24 MP)</label><input id="resolusi" type="text"></div>
+      <div id="f-sepeda" style="display:none"><label>Jenis Gigi (contoh: 21 speed)</label><input id="jenisGigi" type="text"></div>
+      <button onclick="tambahItem()">Tambah Item</button>
+    </div>
   </section>
 
   <!-- FITUR 2 -->
   <section>
-    <h2>2. Tambah Pelanggan</h2>
-    <label>Nama</label><input id="namaPlg" type="text">
-    <label>Email</label><input id="emailPlg" type="text" placeholder="nama@email.com">
-    <label>No. HP</label><input id="hpPlg" type="text" placeholder="081234567890">
-    <button onclick="tambahPelanggan()">Tambah Pelanggan</button>
+    <div class="section-header" onclick="toggleTampil('form-pelanggan', this)">
+      <h2>2. Tambah Pelanggan</h2>
+      <span class="arrow">▼</span>
+    </div>
+    <div id="form-pelanggan" class="form-content">
+      <label>Nama</label><input id="namaPlg" type="text">
+      <label>Email</label><input id="emailPlg" type="text" placeholder="nama@email.com">
+      <label>No. HP</label><input id="hpPlg" type="text" placeholder="081234567890">
+      <button onclick="tambahPelanggan()">Tambah Pelanggan</button>
+    </div>
   </section>
 
   <!-- FITUR 3 -->
   <section>
-    <h2>3. Sewa Item</h2>
-    <label>Item (hanya yang tersedia)</label><select id="sewaItem"></select>
-    <label>Pelanggan</label><select id="sewaPelanggan"></select>
-    <label>Durasi (hari)</label><input id="sewaDurasi" type="number" min="1" value="1">
-    <button onclick="sewaItem()">Sewa</button>
+    <div class="section-header" onclick="toggleTampil('form-sewa', this)">
+      <h2>3. Sewa Item</h2>
+      <span class="arrow">▼</span>
+    </div>
+    <div id="form-sewa" class="form-content">
+      <label>Item (hanya yang tersedia)</label><select id="sewaItem"></select>
+      <label>Pelanggan</label><select id="sewaPelanggan"></select>
+      <label>Durasi (hari)</label><input id="sewaDurasi" type="number" min="1" value="1">
+      <button onclick="sewaItem()">Sewa</button>
+    </div>
   </section>
 
   <!-- FITUR 4 -->
   <section>
-    <h2>4. Kembalikan Item</h2>
-    <label>Transaksi yang masih berjalan</label><select id="kembaliTrx"></select>
-    <button onclick="kembalikan()">Kembalikan</button>
+    <div class="section-header" onclick="toggleTampil('form-kembali', this)">
+      <h2>4. Kembalikan Item</h2>
+      <span class="arrow">▼</span>
+    </div>
+    <div id="form-kembali" class="form-content">
+      <label>Transaksi yang masih berjalan</label><select id="kembaliTrx"></select>
+      <button onclick="kembalikan()">Kembalikan</button>
+    </div>
   </section>
 </div>
 
-<!-- FITUR 5 -->
+<!-- FITUR 5 & 6 -->
 <section>
-  <h2>5. Daftar Item</h2>
-  <label>Filter</label>
-  <select id="filter" onchange="jalankan(muatItem)" style="max-width:220px">
-    <option value="">Semua</option>
-    <option value="true">Tersedia</option>
-    <option value="false">Sedang Disewa</option>
-  </select>
-  <table>
-    <thead><tr><th>ID</th><th>Kategori</th><th>Nama</th><th>Harga/Hari</th><th>Detail</th><th>Status</th></tr></thead>
-    <tbody id="tabelItem"></tbody>
-  </table>
+  <div class="section-header active" onclick="toggleTampil('tabel-item', this)">
+    <h2>5. Daftar Item</h2>
+    <span class="arrow">▼</span>
+  </div>
+  <div id="tabel-item" class="form-content" style="display: block;">
+    <label>Filter</label>
+    <select id="filter" onchange="jalankan(muatItem)" style="max-width:220px">
+      <option value="">Semua</option>
+      <option value="true">Tersedia</option>
+      <option value="false">Sedang Disewa</option>
+    </select>
+    <table>
+      <thead><tr><th>ID</th><th>Kategori</th><th>Nama</th><th>Harga/Hari</th><th>Detail</th><th>Status</th></tr></thead>
+      <tbody id="tabelItem"></tbody>
+    </table>
+  </div>
 </section>
 
 <section>
-  <h2>Riwayat Transaksi</h2>
-  <table>
-    <thead><tr><th>ID</th><th>Item</th><th>Pelanggan</th><th>Tgl Sewa</th><th>Durasi</th><th>Tgl Kembali</th><th>Total</th></tr></thead>
-    <tbody id="tabelTrx"></tbody>
-  </table>
+  <div class="section-header active" onclick="toggleTampil('tabel-trx', this)">
+    <h2>Riwayat Transaksi</h2>
+    <span class="arrow">▼</span>
+  </div>
+  <div id="tabel-trx" class="form-content" style="display: block;">
+    <table>
+      <thead><tr><th>ID</th><th>Item</th><th>Pelanggan</th><th>Tgl Sewa</th><th>Durasi</th><th>Tgl Kembali</th><th>Total</th></tr></thead>
+      <tbody id="tabelTrx"></tbody>
+    </table>
+  </div>
 </section>
 
 <script>
+  // FUNGSI UNTUK KLIK MENU LIPAT (ACCORDION)
+  function toggleTampil(id, headerEl) {
+    const konten = document.getElementById(id);
+    if (konten.style.display === "none" || konten.style.display === "") {
+      konten.style.display = "block";
+      headerEl.classList.add("active");
+    } else {
+      konten.style.display = "none";
+      headerEl.classList.remove("active");
+    }
+  }
+
+  // SCRIPT BAWAAN SEWADULU
   const $ = id => document.getElementById(id);
   const rupiah = n => 'Rp ' + Number(n).toLocaleString('id-ID');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+          ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function tampilPesan(teks, error = false) {
     const el = $('pesan');
@@ -110,7 +292,6 @@
     window._timer = setTimeout(() => el.style.display = 'none', 5000);
   }
 
-  // Semua pemanggilan API lewat sini: error dari backend dijadikan pesan ramah, tidak crash.
   async function api(url, method = 'GET', body = null) {
     let res;
     try {
@@ -136,10 +317,9 @@
 
   function ubahKategori() {
     ['tenda', 'kamera', 'sepeda'].forEach(k =>
-      $('f-' + k).style.display = ($('kategori').value === k) ? 'block' : 'none');
+            $('f-' + k).style.display = ($('kategori').value === k) ? 'block' : 'none');
   }
 
-  // ---- Fitur 1
   function tambahItem() {
     jalankan(async () => {
       const item = await api('/api/items', 'POST', {
@@ -156,11 +336,10 @@
     });
   }
 
-  // ---- Fitur 2
   function tambahPelanggan() {
     jalankan(async () => {
       const p = await api('/api/pelanggan', 'POST', {
-        nama: $('namaPlg').value, email: $('emailPlg').value, noHp: $('hpPlg').value
+        nama: $('namaPlg').value, email: $('emailPlg').value, noHp:$('hpPlg').value
       });
       tampilPesan(`Pelanggan "${p.nama}" berhasil ditambahkan (${p.id}).`);
       ['namaPlg', 'emailPlg', 'hpPlg'].forEach(i => $(i).value = '');
@@ -168,7 +347,6 @@
     });
   }
 
-  // ---- Fitur 3
   function sewaItem() {
     jalankan(async () => {
       const t = await api('/api/sewa', 'POST', {
@@ -181,7 +359,6 @@
     });
   }
 
-  // ---- Fitur 4
   function kembalikan() {
     jalankan(async () => {
       const t = await api('/api/kembali', 'POST', { transaksiId: $('kembaliTrx').value });
@@ -190,7 +367,6 @@
     });
   }
 
-  // ---- Fitur 5
   async function muatItem() {
     const f = $('filter').value;
     const items = await api('/api/items' + (f ? '?tersedia=' + f : ''));
@@ -208,16 +384,17 @@
       api('/api/items?tersedia=true'), api('/api/pelanggan'), api('/api/transaksi')
     ]);
     $('sewaItem').innerHTML = tersedia.length
-      ? tersedia.map(i => `<option value="${esc(i.id)}">${esc(i.id)} - ${esc(i.nama)} (${rupiah(i.hargaSewa)}/hari)</option>`).join('')
-      : '<option value="">(tidak ada item tersedia)</option>';
+            ? tersedia.map(i => `<option value="${esc(i.id)}">${esc(i.nama)} (${rupiah(i.hargaSewa)}/hari)</option>`).join('')
+            : '<option value="">(tidak ada item tersedia)</option>';
+
     $('sewaPelanggan').innerHTML = pelanggan.length
-      ? pelanggan.map(p => `<option value="${esc(p.id)}">${esc(p.id)} - ${esc(p.nama)}</option>`).join('')
-      : '<option value="">(belum ada pelanggan)</option>';
+            ? pelanggan.map(p => `<option value="${esc(p.id)}">${esc(p.nama)}</option>`).join('')
+            : '<option value="">(belum ada pelanggan)</option>';
 
     const aktif = trx.filter(t => !t.selesai);
     $('kembaliTrx').innerHTML = aktif.length
-      ? aktif.map(t => `<option value="${esc(t.id)}">${esc(t.id)} - ${esc(t.itemNama)} oleh ${esc(t.pelangganNama)}</option>`).join('')
-      : '<option value="">(tidak ada sewa berjalan)</option>';
+            ? aktif.map(t => `<option value="${esc(t.id)}">${esc(t.itemNama)} oleh ${esc(t.pelangganNama)}</option>`).join('')
+            : '<option value="">(tidak ada sewa berjalan)</option>';
 
     $('tabelTrx').innerHTML = trx.length ? trx.map(t => `
       <tr>
