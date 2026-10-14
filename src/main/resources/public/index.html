@@ -1,239 +1,256 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SewaDulu</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 12px; background: #f5f6fa; color: #222; }
-  h1 { margin-bottom: 4px; }
-  section { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
-  h2 { margin-top: 0; font-size: 18px; }
-  label { display: block; margin: 8px 0 2px; font-size: 14px; }
-  input, select, button { padding: 7px; font-size: 14px; width: 100%; box-sizing: border-box; }
-  button { width: auto; margin-top: 10px; cursor: pointer; background: #2d6cdf; color: #fff; border: 0; border-radius: 4px; padding: 8px 16px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
-  th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-  th { background: #eef1f8; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  #pesan { display: none; position: fixed; top: 12px; right: 12px; max-width: 340px; padding: 12px 16px; border-radius: 6px; color: #fff; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-  #pesan.sukses { background: #2e9e5b; }
-  #pesan.error { background: #d64545; }
-  .tersedia { color: #2e9e5b; font-weight: bold; }
-  .disewa { color: #d64545; font-weight: bold; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SewaDulu — Management System</title>
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Hubungkan CSS Terpisah -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>SewaDulu</h1>
-<p>Sistem penyewaan tenda, kamera, dan sepeda.</p>
-<div id="pesan"></div>
 
-<div class="grid">
-  <!-- FITUR 1 -->
-  <section>
-    <h2>1. Tambah Item</h2>
-    <label>Kategori</label>
-    <select id="kategori" onchange="ubahKategori()">
-      <option value="tenda">Tenda</option>
-      <option value="kamera">Kamera</option>
-      <option value="sepeda">Sepeda</option>
-    </select>
-    <label>Nama Item</label><input id="namaItem" type="text">
-    <label>Harga Sewa per Hari (Rp)</label><input id="hargaSewa" type="number" min="0">
-    <div id="f-tenda"><label>Kapasitas (orang)</label><input id="kapasitas" type="number" min="0"></div>
-    <div id="f-kamera" style="display:none"><label>Resolusi (contoh: 24 MP)</label><input id="resolusi" type="text"></div>
-    <div id="f-sepeda" style="display:none"><label>Jenis Gigi (contoh: 21 speed)</label><input id="jenisGigi" type="text"></div>
-    <button onclick="tambahItem()">Tambah Item</button>
+<!-- Toast Notification -->
+<div id="pesan" class="toast"></div>
+
+<!-- Header -->
+<header class="app-header">
+  <div class="header-container">
+    <div class="brand">
+      <div class="brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+      <div>
+        <h1>SewaDulu</h1>
+        <p>Sistem Informasi Penyewaan Tenda, Kamera & Sepeda</p>
+      </div>
+    </div>
+    <div class="header-badge">
+      <span class="live-dot"></span> System Active
+    </div>
+  </div>
+</header>
+
+<main class="main-container">
+
+  <!-- DASHBOARD STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon icon-blue"><i class="fa-solid fa-box-open"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Total Item</span>
+        <h3 id="statTotalItem">0</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon icon-green"><i class="fa-solid fa-circle-check"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Item Tersedia</span>
+        <h3 id="statTersedia">0</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon icon-orange"><i class="fa-solid fa-handshake"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Sewa Berjalan</span>
+        <h3 id="statSewaAktif">0</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon icon-purple"><i class="fa-solid fa-users"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Total Pelanggan</span>
+        <h3 id="statPelanggan">0</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTION CARDS GRID -->
+  <div class="action-grid">
+
+    <!-- FITUR 1: Tambah Item -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-plus-circle"></i> Tambah Item Baru</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="kategori">Kategori Item</label>
+          <select id="kategori" onchange="ubahKategori()">
+            <option value="tenda">⛺ Tenda</option>
+            <option value="kamera">📷 Kamera</option>
+            <option value="sepeda">🚲 Sepeda</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="namaItem">Nama Item</label>
+          <input id="namaItem" type="text" placeholder="Contoh: Tenda Dome 4P">
+        </div>
+
+        <div class="form-group">
+          <label for="hargaSewa">Harga Sewa / Hari (Rp)</label>
+          <input id="hargaSewa" type="number" min="0" placeholder="50000">
+        </div>
+
+        <div id="f-tenda" class="form-group">
+          <label for="kapasitas">Kapasitas (Orang)</label>
+          <input id="kapasitas" type="number" min="0" placeholder="4">
+        </div>
+
+        <div id="f-kamera" class="form-group" style="display:none">
+          <label for="resolusi">Resolusi</label>
+          <input id="resolusi" type="text" placeholder="Contoh: 24 MP">
+        </div>
+
+        <div id="f-sepeda" class="form-group" style="display:none">
+          <label for="jenisGigi">Jenis Gigi / Speed</label>
+          <input id="jenisGigi" type="text" placeholder="Contoh: 21 Speed">
+        </div>
+
+        <button class="btn btn-primary" onclick="tambahItem()">
+          <i class="fa-solid fa-save"></i> Simpan Item
+        </button>
+      </div>
+    </section>
+
+    <!-- FITUR 2: Tambah Pelanggan -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-user-plus"></i> Registrasi Pelanggan</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="namaPlg">Nama Lengkap</label>
+          <input id="namaPlg" type="text" placeholder="Masukkan nama pelanggan">
+        </div>
+
+        <div class="form-group">
+          <label for="emailPlg">Alamat Email</label>
+          <input id="emailPlg" type="email" placeholder="nama@email.com">
+        </div>
+
+        <div class="form-group">
+          <label for="hpPlg">Nomor WhatsApp / HP</label>
+          <input id="hpPlg" type="tel" placeholder="081234567890">
+        </div>
+
+        <button class="btn btn-primary" onclick="tambahPelanggan()">
+          <i class="fa-solid fa-user-check"></i> Simpan Pelanggan
+        </button>
+      </div>
+    </section>
+
+    <!-- FITUR 3: Sewa Item -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-cart-flatbed-suitcases"></i> Transaksi Penyewaan</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="sewaItem">Pilih Item (Tersedia)</label>
+          <select id="sewaItem"></select>
+        </div>
+
+        <div class="form-group">
+          <label for="sewaPelanggan">Pilih Pelanggan</label>
+          <select id="sewaPelanggan"></select>
+        </div>
+
+        <div class="form-group">
+          <label for="sewaDurasi">Durasi Sewa (Hari)</label>
+          <input id="sewaDurasi" type="number" min="1" value="1">
+        </div>
+
+        <button class="btn btn-success" onclick="sewaItem()">
+          <i class="fa-solid fa-file-contract"></i> Proses Sewa
+        </button>
+      </div>
+    </section>
+
+    <!-- FITUR 4: Kembalikan Item -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-arrow-rotate-left"></i> Pengembalian Item</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="kembaliTrx">Transaksi Sewa Berjalan</label>
+          <select id="kembaliTrx"></select>
+        </div>
+
+        <button class="btn btn-warning" onclick="kembalikan()">
+          <i class="fa-solid fa-circle-check"></i> Selesaikan & Kembalikan
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- FITUR 5: Daftar Item -->
+  <section class="card table-card">
+    <div class="card-header flex-between">
+      <h2><i class="fa-solid fa-boxes-stacked"></i> Daftar Inventaris Item</h2>
+      <div class="filter-box">
+        <i class="fa-solid fa-filter filter-icon"></i>
+        <select id="filter" onchange="jalankan(muatItem)">
+          <option value="">Semua Status</option>
+          <option value="true">Tersedia</option>
+          <option value="false">Sedang Disewa</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table>
+        <thead>
+        <tr>
+          <th>ID</th>
+          <th>Kategori</th>
+          <th>Nama Item</th>
+          <th>Harga / Hari</th>
+          <th>Detail Spesifikasi</th>
+          <th>Status</th>
+        </tr>
+        </thead>
+        <tbody id="tabelItem"></tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- FITUR 2 -->
-  <section>
-    <h2>2. Tambah Pelanggan</h2>
-    <label>Nama</label><input id="namaPlg" type="text">
-    <label>Email</label><input id="emailPlg" type="text" placeholder="nama@email.com">
-    <label>No. HP</label><input id="hpPlg" type="text" placeholder="081234567890">
-    <button onclick="tambahPelanggan()">Tambah Pelanggan</button>
+  <!-- RIWAYAT TRANSAKSI -->
+  <section class="card table-card">
+    <div class="card-header">
+      <h2><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Transaksi Penyewaan</h2>
+    </div>
+    <div class="table-responsive">
+      <table>
+        <thead>
+        <tr>
+          <th>ID Transaksi</th>
+          <th>Item</th>
+          <th>Pelanggan</th>
+          <th>Tgl Sewa</th>
+          <th>Durasi</th>
+          <th>Tgl Kembali</th>
+          <th>Total Biaya</th>
+        </tr>
+        </thead>
+        <tbody id="tabelTrx"></tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- FITUR 3 -->
-  <section>
-    <h2>3. Sewa Item</h2>
-    <label>Item (hanya yang tersedia)</label><select id="sewaItem"></select>
-    <label>Pelanggan</label><select id="sewaPelanggan"></select>
-    <label>Durasi (hari)</label><input id="sewaDurasi" type="number" min="1" value="1">
-    <button onclick="sewaItem()">Sewa</button>
-  </section>
+</main>
 
-  <!-- FITUR 4 -->
-  <section>
-    <h2>4. Kembalikan Item</h2>
-    <label>Transaksi yang masih berjalan</label><select id="kembaliTrx"></select>
-    <button onclick="kembalikan()">Kembalikan</button>
-  </section>
-</div>
+<footer class="app-footer">
+  <p>&copy; 2026 <strong>SewaDulu Management System</strong>. All rights reserved.</p>
+</footer>
 
-<!-- FITUR 5 -->
-<section>
-  <h2>5. Daftar Item</h2>
-  <label>Filter</label>
-  <select id="filter" onchange="jalankan(muatItem)" style="max-width:220px">
-    <option value="">Semua</option>
-    <option value="true">Tersedia</option>
-    <option value="false">Sedang Disewa</option>
-  </select>
-  <table>
-    <thead><tr><th>ID</th><th>Kategori</th><th>Nama</th><th>Harga/Hari</th><th>Detail</th><th>Status</th></tr></thead>
-    <tbody id="tabelItem"></tbody>
-  </table>
-</section>
-
-<section>
-  <h2>Riwayat Transaksi</h2>
-  <table>
-    <thead><tr><th>ID</th><th>Item</th><th>Pelanggan</th><th>Tgl Sewa</th><th>Durasi</th><th>Tgl Kembali</th><th>Total</th></tr></thead>
-    <tbody id="tabelTrx"></tbody>
-  </table>
-</section>
-
-<script>
-  const $ = id => document.getElementById(id);
-  const rupiah = n => 'Rp ' + Number(n).toLocaleString('id-ID');
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-  function tampilPesan(teks, error = false) {
-    const el = $('pesan');
-    el.textContent = teks;
-    el.className = error ? 'error' : 'sukses';
-    el.style.display = 'block';
-    clearTimeout(window._timer);
-    window._timer = setTimeout(() => el.style.display = 'none', 5000);
-  }
-
-  // Semua pemanggilan API lewat sini: error dari backend dijadikan pesan ramah, tidak crash.
-  async function api(url, method = 'GET', body = null) {
-    let res;
-    try {
-      res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined
-      });
-    } catch (e) {
-      throw new Error('Tidak dapat terhubung ke server. Pastikan backend berjalan.');
-    }
-    let data = null;
-    try { data = await res.json(); } catch (_) {}
-    if (!res.ok) throw new Error((data && data.error) || `Terjadi kesalahan (kode ${res.status}).`);
-    return data;
-  }
-
-  async function jalankan(fn) {
-    try { await fn(); } catch (e) { tampilPesan(e.message, true); }
-  }
-
-  const angka = id => $(id).value === '' ? null : Number($(id).value);
-
-  function ubahKategori() {
-    ['tenda', 'kamera', 'sepeda'].forEach(k =>
-      $('f-' + k).style.display = ($('kategori').value === k) ? 'block' : 'none');
-  }
-
-  // ---- Fitur 1
-  function tambahItem() {
-    jalankan(async () => {
-      const item = await api('/api/items', 'POST', {
-        kategori: $('kategori').value,
-        nama: $('namaItem').value,
-        hargaSewa: angka('hargaSewa'),
-        kapasitas: angka('kapasitas'),
-        resolusi: $('resolusi').value,
-        jenisGigi: $('jenisGigi').value
-      });
-      tampilPesan(`Item "${item.nama}" berhasil ditambahkan (${item.id}).`);
-      ['namaItem', 'hargaSewa', 'kapasitas', 'resolusi', 'jenisGigi'].forEach(i => $(i).value = '');
-      await refreshSemua();
-    });
-  }
-
-  // ---- Fitur 2
-  function tambahPelanggan() {
-    jalankan(async () => {
-      const p = await api('/api/pelanggan', 'POST', {
-        nama: $('namaPlg').value, email: $('emailPlg').value, noHp: $('hpPlg').value
-      });
-      tampilPesan(`Pelanggan "${p.nama}" berhasil ditambahkan (${p.id}).`);
-      ['namaPlg', 'emailPlg', 'hpPlg'].forEach(i => $(i).value = '');
-      await refreshSemua();
-    });
-  }
-
-  // ---- Fitur 3
-  function sewaItem() {
-    jalankan(async () => {
-      const t = await api('/api/sewa', 'POST', {
-        itemId: $('sewaItem').value,
-        pelangganId: $('sewaPelanggan').value,
-        durasiHari: angka('sewaDurasi')
-      });
-      tampilPesan(`Berhasil! ${t.itemNama} disewa oleh ${t.pelangganNama} (${t.id}).`);
-      await refreshSemua();
-    });
-  }
-
-  // ---- Fitur 4
-  function kembalikan() {
-    jalankan(async () => {
-      const t = await api('/api/kembali', 'POST', { transaksiId: $('kembaliTrx').value });
-      tampilPesan(`${t.itemNama} dikembalikan. Total biaya: ${rupiah(t.totalBiaya)}`);
-      await refreshSemua();
-    });
-  }
-
-  // ---- Fitur 5
-  async function muatItem() {
-    const f = $('filter').value;
-    const items = await api('/api/items' + (f ? '?tersedia=' + f : ''));
-    $('tabelItem').innerHTML = items.length ? items.map(i => `
-      <tr>
-        <td>${esc(i.id)}</td><td>${esc(i.kategori)}</td><td>${esc(i.nama)}</td>
-        <td>${rupiah(i.hargaSewa)}</td>
-        <td>${Object.entries(i.detail).map(([k, v]) => esc(k) + ': ' + esc(v)).join(', ')}</td>
-        <td class="${i.statusTersedia ? 'tersedia' : 'disewa'}">${i.statusTersedia ? 'Tersedia' : 'Disewa'}</td>
-      </tr>`).join('') : '<tr><td colspan="6">Belum ada data.</td></tr>';
-  }
-
-  async function muatDropdown() {
-    const [tersedia, pelanggan, trx] = await Promise.all([
-      api('/api/items?tersedia=true'), api('/api/pelanggan'), api('/api/transaksi')
-    ]);
-    $('sewaItem').innerHTML = tersedia.length
-      ? tersedia.map(i => `<option value="${esc(i.id)}">${esc(i.id)} - ${esc(i.nama)} (${rupiah(i.hargaSewa)}/hari)</option>`).join('')
-      : '<option value="">(tidak ada item tersedia)</option>';
-    $('sewaPelanggan').innerHTML = pelanggan.length
-      ? pelanggan.map(p => `<option value="${esc(p.id)}">${esc(p.id)} - ${esc(p.nama)}</option>`).join('')
-      : '<option value="">(belum ada pelanggan)</option>';
-
-    const aktif = trx.filter(t => !t.selesai);
-    $('kembaliTrx').innerHTML = aktif.length
-      ? aktif.map(t => `<option value="${esc(t.id)}">${esc(t.id)} - ${esc(t.itemNama)} oleh ${esc(t.pelangganNama)}</option>`).join('')
-      : '<option value="">(tidak ada sewa berjalan)</option>';
-
-    $('tabelTrx').innerHTML = trx.length ? trx.map(t => `
-      <tr>
-        <td>${esc(t.id)}</td><td>${esc(t.itemNama)}</td><td>${esc(t.pelangganNama)}</td>
-        <td>${esc(t.tanggalSewa)}</td><td>${esc(t.durasiRencana)} hari</td>
-        <td>${t.tanggalKembali ? esc(t.tanggalKembali) : '<i>belum</i>'}</td>
-        <td>${t.totalBiaya != null ? rupiah(t.totalBiaya) : '-'}</td>
-      </tr>`).join('') : '<tr><td colspan="7">Belum ada transaksi.</td></tr>';
-  }
-
-  async function refreshSemua() {
-    await muatItem();
-    await muatDropdown();
-  }
-
-  jalankan(refreshSemua);
-</script>
+<!-- Hubungkan JS Terpisah -->
+<script src="app.js" defer></script>
 </body>
 </html>

@@ -1,15 +1,20 @@
 package com.sewadulu
 
+import com.sewadulu.endpoint.endpointdb
 import io.javalin.Javalin
+import io.javalin.http.staticfiles.Location
 
 fun main() {
-    // Membuat dan menjalankan server di port 7070
-    val app = Javalin.create().start(7070)
+    DatabaseService.init()
 
-    // Endpoint dasar untuk mengetes server
-    app.get("/") { ctx ->
-        ctx.result("Server Sistem SewaDulu berhasil berjalan!")
+    val app = Javalin.create { config ->
+        config.staticFiles.add("/public", Location.CLASSPATH)   // melayani index.html
     }
 
-    // Catatan: Nanti routing untuk SewaController.kt buatan Fahmi akan dipanggil di bawah ini
+    // Semua route (items, pelanggan, sewa, kembali, transaksi) membaca/menulis ke SQLite.
+    // Harus didaftarkan SEBELUM app.start().
+    endpointdb(app)
+
+    app.start(7070)
+    println("SewaDulu berjalan di http://localhost:7070")
 }
