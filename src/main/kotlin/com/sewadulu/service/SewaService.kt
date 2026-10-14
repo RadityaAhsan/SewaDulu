@@ -1,24 +1,21 @@
 package com.sewadulu.service
 
+import com.mongodb.client.MongoCollection
+import com.mongodb.client.model.Filters
+import com.sewadulu.config.MongoConfig
 import com.sewadulu.exception.*
 import com.sewadulu.model.*
+import org.bson.Document
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 class SewaService {
-
-    // Collection sesuai ketentuan: MutableMap untuk pencarian cepat via ID,
-    // MutableList untuk riwayat transaksi.
-    private val daftarItem: MutableMap<String, ItemSewa> = mutableMapOf()
-    private val daftarPelanggan: MutableMap<String, Pelanggan> = mutableMapOf()
-    private val riwayatTransaksi: MutableList<TransaksiSewa> = mutableListOf()
-
-    private var seqItem = 0
-    private var seqPelanggan = 0
-    private var seqTransaksi = 0
+    // Menghubungkan ke koleksi database MongoDB
+    private val itemCollection: MongoCollection<Document> = MongoConfig.database.getCollection("items")
+    private val pelangganCollection: MongoCollection<Document> = MongoConfig.database.getCollection("pelanggan")
+    private val transaksiCollection: MongoCollection<Document> = MongoConfig.database.getCollection("transaksi")
 
     private val emailRegex = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
-    // Format nomor HP Indonesia: 08xx / 628xx / +628xx
     private val hpRegex = Regex("^(\\+62|62|0)8[0-9]{8,11}$")
 
     // ---------- FITUR 1: Tambah Item ----------
@@ -33,7 +30,9 @@ class SewaService {
         val harga = req.hargaSewa
         if (harga == null || harga <= 0) throw InputTidakValidException("Harga sewa harus diisi dan lebih dari 0.")
 
-        val id = "ITM-%03d".format(seqItem + 1)
+        // Generate ID unik sederhana berdasarkan waktu atau hitung jumlah data
+        val count = itemCollection.countDocuments() + 1
+        val id = "ITM-%03d".format(count)
 
         val item: ItemSewa = when (kategori) {
             "tenda" -> {
@@ -57,8 +56,20 @@ class SewaService {
             else -> throw InputTidakValidException("Kategori '$kategori' tidak dikenal (pilih: tenda, kamera, sepeda).")
         }
 
-        seqItem++
-        daftarItem[id] = item
+        // Simpan ke MongoDB sebagai Document
+        val doc = Document("id", item.id)
+            .append("nama", item.nama)
+            .append("hargaSewa", item.hargaSewa)
+            .append("statusTersedia", item.statusTersedia)
+            .append("kategori", kategori)
+
+        when (item) {
+            is Tenda -> doc.append("kapasitas", item.kapasitas)
+            is Kamera -> doc.append("resolusi", item.resolusi)
+            is Sepeda -> doc.append("jenisGigi", item.jenisGigi)
+        }
+
+        itemCollection.insertOne(doc)
         return item
     }
 
@@ -76,45 +87,94 @@ class SewaService {
         if (noHp.isNullOrEmpty() || !hpRegex.matches(noHp))
             throw InputTidakValidException("Format nomor HP tidak valid (contoh: 081234567890).")
 
-        if (daftarPelanggan.values.any { it.email.equals(email, ignoreCase = true) })
+        // Cek email duplikat di MongoDB
+        val existing = pelangganCollection.find(Filters.eq("email", email)).first()
+        if (existing != null) {
             throw InputTidakValidException("Email '$email' sudah terdaftar.")
+        }
 
-        val id = "PLG-%03d".format(++seqPelanggan)
+        val count = pelangganCollection.countDocuments() + 1
+        val id = "PLG-%03d".format(count)
         val pelanggan = Pelanggan(id, nama, email, noHp)
-        daftarPelanggan[id] = pelanggan
+
+        val doc = Document("id", pelanggan.id)
+            .append("nama", pelanggan.nama)
+            .append("email", pelanggan.email)
+            .append("noHp", pelanggan.noHp)
+
+        pelangganCollection.insertOne(doc)
         return pelanggan
     }
 
     @Synchronized
-    fun daftarPelanggan(): List<Pelanggan> = daftarPelanggan.values.toList()
+    fun daftarPelanggan(): List<Pelanggan> {
+        val list = mutableListOf<Pelanggan>()
+        for (doc in pelangganCollection.find()) {
+            list.add(
+                Pelanggan(
+                    id = doc.getString("id") ?: "",
+                    nama = doc.getString("nama") ?: "",
+                    email = doc.getString("email") ?: "",
+                    noHp = doc.getString("noHp") ?: ""
+                )
+            )
+        }
+        return list
+    }
 
     // ---------- FITUR 3: Sewa Item ----------
     @Synchronized
     fun sewaItem(req: SewaRequest): TransaksiSewa {
         val itemId = req.itemId?.trim()
         if (itemId.isNullOrEmpty()) throw InputTidakValidException("Item wajib dipilih.")
+
         val pelangganId = req.pelangganId?.trim()
         if (pelangganId.isNullOrEmpty()) throw InputTidakValidException("Pelanggan wajib dipilih.")
+
         val durasi = req.durasiHari
         if (durasi == null || durasi <= 0) throw InputTidakValidException("Durasi sewa minimal 1 hari.")
 
-        val item = daftarItem[itemId] ?: throw ItemTidakDitemukanException(itemId)
-        val pelanggan = daftarPelanggan[pelangganId] ?: throw PelangganTidakDitemukanException(pelangganId)
+        // Cari item di MongoDB
+        val itemDoc = itemCollection.find(Filters.eq("id", itemId)).first()
+            ?: throw ItemTidakDitemukanException(itemId)
 
-        if (!item.statusTersedia) throw ItemTidakTersediaException(item.nama)
+        // Cari pelanggan di MongoDB
+        val pelDoc = pelangganCollection.find(Filters.eq("id", pelangganId)).first()
+            ?: throw PelangganTidakDitemukanException(pelangganId)
 
-        item.statusTersedia = false
+        val statusTersedia = itemDoc.getBoolean("statusTersedia") ?: true
+        if (!statusTersedia) {
+            throw ItemTidakTersediaException(itemDoc.getString("nama") ?: itemId)
+        }
+
+        // Update status item jadi tidak tersedia di MongoDB
+        itemCollection.updateOne(Filters.eq("id", itemId), Document("\$set", Document("statusTersedia", false)))
+
+        val count = transaksiCollection.countDocuments() + 1
+        val trxId = "TRX-%03d".format(count)
+
         val transaksi = TransaksiSewa(
-            id = "TRX-%03d".format(++seqTransaksi),
-            itemId = item.id,
-            itemNama = item.nama,
-            hargaPerHari = item.hargaSewa,
-            pelangganId = pelanggan.id,
-            pelangganNama = pelanggan.nama,
+            id = trxId,
+            itemId = itemId,
+            itemNama = itemDoc.getString("nama") ?: "",
+            hargaPerHari = itemDoc.getDouble("hargaSewa") ?: 0.0,
+            pelangganId = pelangganId,
+            pelangganNama = pelDoc.getString("nama") ?: "",
             tanggalSewa = LocalDate.now(),
             durasiRencana = durasi
         )
-        riwayatTransaksi.add(transaksi)
+
+        val trxDoc = Document("id", transaksi.id)
+            .append("itemId", transaksi.itemId)
+            .append("itemNama", transaksi.itemNama)
+            .append("hargaPerHari", transaksi.hargaPerHari)
+            .append("pelangganId", transaksi.pelangganId)
+            .append("pelangganNama", transaksi.pelangganNama)
+            .append("tanggalSewa", transaksi.tanggalSewa.toString())
+            .append("durasiRencana", transaksi.durasiRencana)
+            .append("selesai", transaksi.selesai)
+
+        transaksiCollection.insertOne(trxDoc)
         return transaksi
     }
 
@@ -124,33 +184,103 @@ class SewaService {
         val trxId = req.transaksiId?.trim()
         if (trxId.isNullOrEmpty()) throw InputTidakValidException("Transaksi wajib dipilih.")
 
-        val transaksi = riwayatTransaksi.find { it.id == trxId }
+        val trxDoc = transaksiCollection.find(Filters.eq("id", trxId)).first()
             ?: throw TransaksiTidakDitemukanException(trxId)
-        if (transaksi.selesai) throw InputTidakValidException("Transaksi $trxId sudah dikembalikan sebelumnya.")
 
-        val item = daftarItem[transaksi.itemId] ?: throw ItemTidakDitemukanException(transaksi.itemId)
+        // Cek apakah sudah dikembalikan sebelumnya berdasarkan tanggalKembali di database
+        if (trxDoc.getString("tanggalKembali") != null) {
+            throw InputTidakValidException("Transaksi $trxId sudah dikembalikan sebelumnya.")
+        }
 
+        val itemId = trxDoc.getString("itemId") ?: ""
+        val itemDoc = itemCollection.find(Filters.eq("id", itemId)).first()
+            ?: throw ItemTidakDitemukanException(itemId)
+
+        val tanggalSewaStr = trxDoc.getString("tanggalSewa") ?: LocalDate.now().toString()
+        val tanggalSewa = LocalDate.parse(tanggalSewaStr)
         val hariKembali = LocalDate.now()
-        val hariAktual = maxOf(1L, ChronoUnit.DAYS.between(transaksi.tanggalSewa, hariKembali))
+        val hariAktual = maxOf(1L, ChronoUnit.DAYS.between(tanggalSewa, hariKembali))
 
-        transaksi.tanggalKembali = hariKembali
-        transaksi.totalBiaya = transaksi.hargaPerHari * hariAktual
-        item.statusTersedia = true
-        return transaksi
+        val hargaPerHari = trxDoc.getDouble("hargaPerHari") ?: 0.0
+        val totalBiaya = hargaPerHari * hariAktual
+
+        // Update transaksi di MongoDB (cukup simpan tanggalKembali dan totalBiaya)
+        transaksiCollection.updateOne(
+            Filters.eq("id", trxId),
+            Document("\$set", Document("tanggalKembali", hariKembali.toString())
+                .append("totalBiaya", totalBiaya))
+        )
+
+        // Update status item kembali tersedia di MongoDB
+        itemCollection.updateOne(Filters.eq("id", itemId), Document("\$set", Document("statusTersedia", true)))
+
+        return TransaksiSewa(
+            id = trxId,
+            itemId = itemId,
+            itemNama = trxDoc.getString("itemNama") ?: "",
+            hargaPerHari = hargaPerHari,
+            pelangganId = trxDoc.getString("pelangganId") ?: "",
+            pelangganNama = trxDoc.getString("pelangganNama") ?: "",
+            tanggalSewa = tanggalSewa,
+            durasiRencana = trxDoc.getInteger("durasiRencana") ?: 1
+        ).apply {
+            this.tanggalKembali = hariKembali
+            this.totalBiaya = totalBiaya
+        }
     }
 
     // ---------- FITUR 5: Daftar Item (filter ketersediaan) ----------
     @Synchronized
     fun daftarItem(filterTersedia: String?): List<ItemSewa> {
-        val semua = daftarItem.values.toList()
-        return when (filterTersedia?.trim()?.lowercase()) {
-            null, "", "semua" -> semua
-            "true" -> semua.filter { it.statusTersedia }
-            "false" -> semua.filter { !it.statusTersedia }
+        val queryFilter = when (filterTersedia?.trim()?.lowercase()) {
+            null, "", "semua" -> Document()
+            "true" -> Filters.eq("statusTersedia", true)
+            "false" -> Filters.eq("statusTersedia", false)
             else -> throw InputTidakValidException("Filter tidak valid. Gunakan: true, false, atau kosong.")
         }
+
+        val list = mutableListOf<ItemSewa>()
+        for (doc in itemCollection.find(queryFilter)) {
+            val id = doc.getString("id") ?: ""
+            val nama = doc.getString("nama") ?: ""
+            val harga = doc.getDouble("hargaSewa") ?: 0.0
+            val tersedia = doc.getBoolean("statusTersedia") ?: true
+            val kategori = doc.getString("kategori") ?: ""
+
+            val item: ItemSewa = when (kategori) {
+                "tenda" -> Tenda(id, nama, harga, doc.getInteger("kapasitas") ?: 0).apply { statusTersedia = tersedia }
+                "kamera" -> Kamera(id, nama, harga, doc.getString("resolusi") ?: "").apply { statusTersedia = tersedia }
+                "sepeda" -> Sepeda(id, nama, harga, doc.getString("jenisGigi") ?: "").apply { statusTersedia = tersedia }
+                else -> Tenda(id, nama, harga, 0).apply { statusTersedia = tersedia }
+            }
+            list.add(item)
+        }
+        return list
     }
 
     @Synchronized
-    fun daftarTransaksi(): List<TransaksiSewa> = riwayatTransaksi.toList()
+    fun daftarTransaksi(): List<TransaksiSewa> {
+        val list = mutableListOf<TransaksiSewa>()
+        for (doc in transaksiCollection.find()) {
+            val trx = TransaksiSewa(
+                id = doc.getString("id") ?: "",
+                itemId = doc.getString("itemId") ?: "",
+                itemNama = doc.getString("itemNama") ?: "",
+                hargaPerHari = doc.getDouble("hargaPerHari") ?: 0.0,
+                pelangganId = doc.getString("pelangganId") ?: "",
+                pelangganNama = doc.getString("pelangganNama") ?: "",
+                tanggalSewa = LocalDate.parse(doc.getString("tanggalSewa") ?: LocalDate.now().toString()),
+                durasiRencana = doc.getInteger("durasiRencana") ?: 1
+            )
+
+            doc.getString("tanggalKembali")?.let {
+                trx.tanggalKembali = LocalDate.parse(it)
+            }
+            doc.getDouble("totalBiaya")?.let {
+                trx.totalBiaya = it
+            }
+            list.add(trx)
+        }
+        return list
+    }
 }
