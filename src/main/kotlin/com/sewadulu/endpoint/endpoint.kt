@@ -29,21 +29,42 @@ private inline fun <reified T> Context.parseBody(): T =
         throw InputTidakValidException("Format data tidak valid. Periksa kembali isian Anda.")
     }
 
+/**
+ * Ambil angka dari isian user lalu tambahkan satuan otomatis.
+ * "24", "24 MP", "24mp" -> "24 MP"; "21" / "21 speed" -> "21 Speed".
+ * Mengembalikan null jika isian bukan angka.
+ */
+private fun formatDenganSatuan(input: String, satuan: String): String? {
+    val m = Regex("^(\\d+(?:[.,]\\d+)?)\\s*(?:${satuan})?$", RegexOption.IGNORE_CASE).matchEntire(input.trim())
+        ?: return null
+    return "${m.groupValues[1]} $satuan"
+}
+
+/** Data lama yang hanya berisi angka ikut diberi satuan saat ditampilkan. */
+private fun detailDenganSatuan(detail: Any?): Map<String, Any> {
+    val map = (detail as? Map<*, *>) ?: return emptyMap()
+    return map.entries.associate { (k, v) ->
+        val key = k.toString()
+        val teks = v?.toString() ?: ""
+        val hasil = when (key) {
+            "resolusi" -> formatDenganSatuan(teks, "MP") ?: teks
+            "jenisGigi" -> formatDenganSatuan(teks, "Speed") ?: teks
+            else -> teks
+        }
+        key to (hasil as Any)
+    }
+}
+
 /** Ubah baris DB menjadi format yang dibaca frontend (detail berupa map). */
 private fun itemKeFrontend(item: Map<String, Any>): Map<String, Any> {
-    val kunciDetail = when (item["kategori"].toString().lowercase()) {
-        "tenda" -> "kapasitas"
-        "kamera" -> "resolusi"
-        "sepeda" -> "jenisGigi"
-        else -> "info"
-    }
+    // "detail" dari DatabaseService.toItem() sudah berupa map, mis. {"kapasitas": "4 orang"}.
     return mapOf(
         "id" to item["id"]!!,
         "kategori" to item["kategori"]!!,
         "nama" to item["nama"]!!,
         "hargaSewa" to item["hargaSewa"]!!,
         "statusTersedia" to item["statusTersedia"]!!,
-        "detail" to mapOf(kunciDetail to (item["detail"] ?: ""))
+        "detail" to detailDenganSatuan(item["detail"])
     )
 }
 
@@ -95,13 +116,15 @@ fun endpointdb(app: Javalin) {
                 val resolusi = req.resolusi?.trim()
                 if (resolusi.isNullOrEmpty())
                     throw InputTidakValidException("Resolusi kamera tidak boleh kosong.")
-                resolusi
+                formatDenganSatuan(resolusi, "MP")
+                    ?: throw InputTidakValidException("Resolusi kamera harus berupa angka (contoh: 24).")
             }
             "sepeda" -> {
                 val gigi = req.jenisGigi?.trim()
                 if (gigi.isNullOrEmpty())
                     throw InputTidakValidException("Jenis gigi sepeda tidak boleh kosong.")
-                gigi
+                formatDenganSatuan(gigi, "Speed")
+                    ?: throw InputTidakValidException("Jenis gigi sepeda harus berupa angka (contoh: 21).")
             }
             else -> throw InputTidakValidException("Kategori '$kategori' tidak dikenal (pilih: tenda, kamera, sepeda).")
         }

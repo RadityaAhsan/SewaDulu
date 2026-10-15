@@ -41,6 +41,13 @@ async function jalankan(fn) {
 
 const angka = id => $(id).value === '' ? null : Number($(id).value);
 
+// Cegah scroll mouse mengubah angka pada input number
+// (penyebab nilai 60000 berubah sendiri jadi 59987 saat halaman di-scroll).
+document.addEventListener('wheel', e => {
+    const el = document.activeElement;
+    if (el && el.type === 'number' && el === e.target) el.blur();
+}, { passive: true });
+
 // ==========================================
 // FORM
 // ==========================================

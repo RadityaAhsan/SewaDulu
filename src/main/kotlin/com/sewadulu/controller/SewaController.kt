@@ -9,22 +9,15 @@ import io.javalin.http.Context
 
 class SewaController(private val service: SewaService) {
 
-    // Helper untuk menyesuaikan format item agar memiliki properti 'detail' yang dibaca oleh app.js
+    // Helper untuk menyesuaikan format item agar properti 'detail' berupa String teks biasa
     private fun itemKeFrontend(item: ItemSewa): Map<String, Any> {
         val map = item.toMap()
         val kategori = (map["kategori"] as? String)?.lowercase() ?: ""
 
-        val kunciDetail = when (kategori) {
-            "tenda" -> "kapasitas"
-            "kamera" -> "resolusi"
-            "sepeda" -> "jenisGigi"
-            else -> "info"
-        }
-
-        val nilaiDetail = when (kategori) {
-            "tenda" -> "${map["kapasitas"]} orang"
-            "kamera" -> map["resolusi"] ?: ""
-            "sepeda" -> map["jenisGigi"] ?: ""
+        val teksDetail = when (kategori) {
+            "tenda" -> "kapasitas: ${map["kapasitas"]} orang"
+            "kamera" -> "resolusi: ${map["resolusi"]}"
+            "sepeda" -> "jenisGigi: ${map["jenisGigi"]}"
             else -> ""
         }
 
@@ -34,7 +27,7 @@ class SewaController(private val service: SewaService) {
             "nama" to (map["nama"] ?: ""),
             "hargaSewa" to (map["hargaSewa"] ?: 0.0),
             "statusTersedia" to (map["statusTersedia"] ?: true),
-            "detail" to mapOf(kunciDetail to nilaiDetail)
+            "detail" to teksDetail
         )
     }
 
