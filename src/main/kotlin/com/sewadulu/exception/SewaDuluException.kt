@@ -22,4 +22,4 @@ class TransaksiTidakDitemukanException(id: String) :
     SewaDuluException("Transaksi dengan ID '$id' tidak ditemukan.", 404)
 
 class ItemTidakTersediaException(nama: String) :
-    SewaDuluException("Item '$nama' sedang disewa dan tidak tersedia.", 409)
+    SewaDuluException("Item '$nama' sedang disewa dan tidak tersedia.", 409)
